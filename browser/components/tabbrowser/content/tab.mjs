@@ -14,6 +14,7 @@ export class MozTabbrowserTab extends MozElements.MozTab {
         <hbox class="tab-context-line"/>
         <hbox class="tab-loading-burst" flex="1"/>
         <hbox class="tab-group-line"/>
+        <hbox class="tab-security-line"/>
       </vbox>
       <hbox class="tab-content" align="center">
         <stack class="tab-icon-stack">
@@ -46,6 +47,7 @@ export class MozTabbrowserTab extends MozElements.MozTab {
     this.addEventListener("dragstart", this);
     this.addEventListener("mousedown", this);
     this.addEventListener("mouseup", this);
+    this.addEventListener("mousemove", this);
     this.addEventListener("click", this);
     this.addEventListener("dblclick", this, true);
     this.addEventListener("animationstart", this);
@@ -56,6 +58,13 @@ export class MozTabbrowserTab extends MozElements.MozTab {
     this._hover = false;
     this._selectedOnFirstMouseDown = false;
     this._noteIconHover = false;
+    // TabOmnibar: click vs drag/long-press discrimination state.
+    this._omnibarPending = false;
+    this._omnibarMoved = false;
+    this._omnibarDownX = 0;
+    this._omnibarDownY = 0;
+    this._omnibarDownTime = 0;
+    this._omnibarTimer = null;
 
     /**
      * Describes how the tab ended up in this mute state. May be any of:
@@ -572,11 +581,34 @@ export class MozTabbrowserTab extends MozElements.MozTab {
     let tabContainer = this.container;
 
     if (
-      tabContainer._closeTabByDblclick &&
+      (tabContainer._closeTabByDblclick || tabContainer.tabOmnibar) &&
       event.button == 0 &&
       event.detail == 1
     ) {
       this._selectedOnFirstMouseDown = this.selected;
+      // TabOmnibar: record mousedown origin and arm a 250ms long-press cancel timer.
+      // Only a quick click without drag may trigger the omnibar.
+      if (
+        event.button == 0 &&
+        tabContainer.tabOmnibar &&
+        this.selected &&
+        !this.pinned &&
+        !event.target.classList.contains("tab-close-button") &&
+        !event.target.classList.contains("tab-icon-overlay")
+      ) {
+        this._omnibarPending = true;
+        this._omnibarMoved = false;
+        this._omnibarDownX = event.screenX;
+        this._omnibarDownY = event.screenY;
+        this._omnibarDownTime = Date.now();
+        if (this._omnibarTimer) {
+          clearTimeout(this._omnibarTimer);
+        }
+        this._omnibarTimer = setTimeout(() => {
+          this._omnibarPending = false;
+          this._omnibarTimer = null;
+        }, 250);
+      }
     }
 
     if (this.selected) {
@@ -646,12 +678,59 @@ export class MozTabbrowserTab extends MozElements.MozTab {
     }
   }
 
-  on_mouseup() {
+  on_mouseup(event) {
     // Make sure that clear-selection is released.
     // Otherwise selection using Shift key may be broken.
     gBrowser.unlockClearMultiSelection();
 
     this.style.MozUserFocus = "";
+
+    // TabOmnibar: on mouseup, trigger the omnibar if the click was quick and
+    // not a drag. A drag cancels pending in on_mousemove, a long press in the timer.
+    if (this._omnibarPending && !this._omnibarMoved && event.button == 0) {
+      this._omnibarPending = false;
+      if (this._omnibarTimer) {
+        clearTimeout(this._omnibarTimer);
+        this._omnibarTimer = null;
+      }
+      let tabContainer = this.container;
+      if (
+        !tabContainer.verticalMode &&
+        !this.pinned &&
+        this._selectedOnFirstMouseDown &&
+        this.selected &&
+        !event.target.classList.contains("tab-close-button") &&
+        !event.target.classList.contains("tab-icon-overlay") &&
+        tabContainer.tabOmnibar
+      ) {
+        tabContainer.tabOmnibar.maybeEnter(this);
+        event.stopPropagation();
+        event.preventDefault();
+      }
+    } else if (this._omnibarPending) {
+      this._omnibarPending = false;
+      if (this._omnibarTimer) {
+        clearTimeout(this._omnibarTimer);
+        this._omnibarTimer = null;
+      }
+    }
+  }
+
+  on_mousemove(event) {
+    // TabOmnibar: moving more than 5px cancels pending - that is a drag gesture.
+    if (!this._omnibarPending) {
+      return;
+    }
+    let dx = event.screenX - this._omnibarDownX;
+    let dy = event.screenY - this._omnibarDownY;
+    if (dx * dx + dy * dy > 25) {
+      this._omnibarPending = false;
+      this._omnibarMoved = true;
+      if (this._omnibarTimer) {
+        clearTimeout(this._omnibarTimer);
+        this._omnibarTimer = null;
+      }
+    }
   }
 
   on_click(event) {
@@ -748,6 +827,23 @@ export class MozTabbrowserTab extends MozElements.MozTab {
     }
 
     let tabContainer = this.container;
+
+    // TabOmnibar: double-click on the currently selected tab expands it in place
+    // into the address bar. Dragging is inherently excluded (it needs movement).
+    if (
+      !tabContainer._closeTabByDblclick &&
+      !tabContainer.verticalMode &&
+      !this.pinned &&
+      this._selectedOnFirstMouseDown &&
+      this.selected &&
+      !event.target.classList.contains("tab-icon-overlay") &&
+      tabContainer.tabOmnibar
+    ) {
+      tabContainer.tabOmnibar.maybeEnter(this);
+      event.stopPropagation();
+      return;
+    }
+
     if (
       tabContainer._closeTabByDblclick &&
       this._selectedOnFirstMouseDown &&

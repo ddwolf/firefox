@@ -1646,3 +1646,130 @@ toolbar[inactive="true"] .urlbar,
     }
   }
 }
+
+/* TabOmnibar: 传统地址栏(nav-bar)常驻完全隐藏。双击 tab 时,
+ * tab-omnibar.mjs 把 #urlbar-container 直接 DOM 移动到激活 tab 的
+ * .tab-stack 里, urlbar 成为 tab 内容的一部分(真正一个组件, 无浮起/飞入)。 */
+
+/* nav-bar 永久 0 高度: 不占任何垂直空间。 */
+#nav-bar {
+  height: 0 !important;
+  min-height: 0 !important;
+  padding-block: 0 !important;
+  border-top: 0 !important;
+  overflow: visible !important;
+}
+
+/* nav-bar 内除 urlbar-container 外的控件永久收起。 */
+#nav-bar > :not(#nav-bar-customization-target),
+#nav-bar #nav-bar-customization-target > :not(#urlbar-container) {
+  visibility: collapse !important;
+}
+
+/* 非编辑态: urlbar-container 不可见。 */
+#urlbar-container {
+  display: none;
+}
+
+/* 编辑态: urlbar-container 绝对定位铺满整个 tab 元素(含 padding),
+ * 完全盖住 tab 的 favicon/标题, 视觉上地址栏就是 tab 本身。 */
+.tabbrowser-tab[tabomnibar-active] > #urlbar-container {
+  display: block !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 10 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* tab 元素作为 absolute 定位参考。 */
+.tabbrowser-tab[tabomnibar-active] {
+  position: relative !important;
+}
+
+/* #urlbar 编辑态: 完全透明背景(让 tab-background 的选中色透上来),
+ * 零圆角(由 tab-stack 自身圆角裁剪), 无边框阴影, 100% 铺满容器。 */
+#urlbar[tabomnibar] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  border-radius: 0 !important;
+  height: 100% !important;
+  width: 100% !important;
+  min-height: 0 !important;
+  padding-block: 0 !important;
+  margin: 0 !important;
+}
+
+#urlbar[tabomnibar] .urlbar-input {
+  color: inherit !important;
+}
+
+/* urlbar 输入区内部元素彻底去边界(背景色/边框/轮廓/阴影)。
+ * 只作用于输入区, 不影响 .urlbarView 下拉面板的原生外观。 */
+#urlbar[tabomnibar] .urlbar-input-container,
+#urlbar[tabomnibar] .urlbar-input-container * {
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* .urlbar-background 是原生背景层(带斜纹渐变/圆角), 编辑态下必须清掉,
+ * 否则会透出红色条纹和圆角, 与 tab 割裂。 */
+#urlbar[tabomnibar] .urlbar-background {
+  background-image: none !important;
+  border-radius: 0 !important;
+}
+
+/* urlbar 自身的 focus 光环(紫框)一并清除。 */
+#urlbar[tabomnibar][focused],
+#urlbar[tabomnibar]:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+/* ===== TabOmnibar float/aligned 模式 (browser.tabomnibar.mode = floatA/floatB/aligned) =====
+ * 浮层外观: 背景/圆角/阴影/动画。定位由 tab-omnibar.mjs 以 absolute + inline style
+ * 相对 #TabsToolbar-customization-target 控制。urlbar 保持在 toolbar 内,
+ * 从而满足 UrlbarInput 的 #canOpenPopover(要求 closest("toolbar")) 以打开下拉面板。 */
+
+#TabsToolbar-customization-target {
+  position: relative !important;
+}
+
+/* 允许浮层在 tab 栏下方(overlay=false / aligned)溢出显示, 否则会被
+ * navigator-toolbox 的 overflow:clip 裁剪。nav-bar 已折叠, 溢出物只有浮层。
+ * z-index 提升: 让整个 toolbar 区域(含溢出的浮层)盖在 browser-stack 内容之上。 */
+#navigator-toolbox {
+  overflow: visible !important;
+  position: relative !important;
+  z-index: 100 !important;
+}
+
+#urlbar-container[tabomnibar-float] {
+  background-color: var(
+    --toolbar-bgcolor,
+    var(--toolbar-non-lwt-bgcolor, #f9f9fb)
+  ) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+  animation: tabomnibar-float-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes tabomnibar-float-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

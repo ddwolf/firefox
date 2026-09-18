@@ -3542,3 +3542,48 @@ toolbar:not(#TabsToolbar) #firefox-view-button {
   white-space: nowrap;
   width: 100%;
 }
+
+/* TabOmnibar: 双击激活标签页将其原位变为地址栏 */
+
+/* 展开/收回期间所有标签统一使用 280ms 展开缓动, 与 urlbar transform 动画同步。 */
+#tabbrowser-tabs[tabomnibar-active] .tabbrowser-tab {
+  --tab-width-transition:
+    min-width 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 编辑态当前 tab: 标题淡出, 露出下方 Omnibar。 */
+.tabbrowser-tab[tabomnibar-active] > .tab-stack > .tab-content > .tab-label-container {
+  opacity: 0;
+  transition: opacity 100ms ease-out;
+}
+
+/* 安全指示线: 标签底部细线, 默认态始终可见。
+ * 位于标签底部, 与 Container Tabs 的顶部颜色线(.tab-context-line)、
+ * 中部加载进度条(.tab-loading-burst)分区互不冲突。 */
+.tab-security-line {
+  position: absolute;
+  inset-inline: calc(var(--tab-border-radius) / 2);
+  inset-block-end: 2px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--tab-security-line-color, #d0d0d0);
+  pointer-events: none;
+}
+
+/* HTTPS 正常: 中性浅灰, 不奖励及格状态。 */
+.tabbrowser-tab[tabsecurity="secure"] > .tab-stack > .tab-background > .tab-security-line {
+  background: #c8c8cc;
+}
+
+/* HTTP 或证书异常: 琥珀警示色 + 虚线边框叠加线宽变化, 色觉障碍可区分。 */
+.tabbrowser-tab[tabsecurity="insecure"] > .tab-stack > .tab-background > .tab-security-line,
+.tabbrowser-tab[tabsecurity="broken"] > .tab-stack > .tab-background > .tab-security-line {
+  background: repeating-linear-gradient(
+    90deg,
+    #f9a01b 0 4px,
+    #f9a01b33 4px 8px
+  );
+  border-block: 1px dashed #e08a00;
+  height: 3px;
+}

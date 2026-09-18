@@ -3829,3 +3829,10 @@ pref("distribution.mozillaonline.ignore", true);
 #ifdef XP_MACOSX
   pref("browser.macAppMenu.setAsDefaultShown", false);
 #endif
+
+// TabOmnibar: 双击 tab 原地变地址栏。
+// mode: "in"=tab 展开并铺满; "floatA"=固定大小浮层水平居中; "floatB"=固定大小浮层水平左端;
+//       "aligned"=浮层左对齐激活 tab 且向右扩展(tab 下方)。
+pref("browser.tabomnibar.mode", "in");
+// overlay: true=浮层与 tab 一平盖住 tab 栏; false=浮层位于 tab 栏下方。
+pref("browser.tabomnibar.overlay", true);
