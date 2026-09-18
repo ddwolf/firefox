@@ -18,6 +18,7 @@ browser.jar:
    content/browser/tabbrowser/tab-bar-visibility.js       (content/tab-bar-visibility.js)
    content/browser/tabbrowser/tab-groups-list.mjs         (content/tab-groups-list.mjs)
    content/browser/tabbrowser/tab-hover-preview.mjs       (content/tab-hover-preview.mjs)
+   content/browser/tabbrowser/tab-omnibar.mjs             (content/tab-omnibar.mjs)
    content/browser/tabbrowser/tabgroup.mjs                (content/tabgroup.mjs)
    content/browser/tabbrowser/tabgroup-menu.js            (content/tabgroup-menu.js)
    content/browser/tabbrowser/tabnote-menu.js             (content/tabnote-menu.js)

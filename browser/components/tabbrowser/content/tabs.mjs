@@ -7,6 +7,8 @@ const DIRECTION_FORWARD = 1;
 
 const { isTab, isTabGroup, isTabGroupLabel, isSplitViewWrapper } = Tabbrowser;
 
+import { TabOmnibar } from "./tab-omnibar.mjs";
+
 export class MozTabbrowserTabs extends MozElements.TabsBase {
   static observedAttributes = ["orient"];
 
@@ -208,6 +210,8 @@ export class MozTabbrowserTabs extends MozElements.TabsBase {
 
     this.tabDragAndDrop = new window.TabDragAndDrop(this);
     this.tabDragAndDrop.init();
+
+    this.tabOmnibar = new TabOmnibar(this);
   }
 
   attributeChangedCallback(attrName, oldValue, newValue) {
