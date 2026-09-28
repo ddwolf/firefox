@@ -3567,16 +3567,22 @@ toolbar:not(#TabsToolbar) #firefox-view-button {
   inset-block-end: 2px;
   height: 2px;
   border-radius: 1px;
-  background: var(--tab-security-line-color, #d0d0d0);
+  background: transparent;
   pointer-events: none;
+  transition: background 120ms ease;
 }
 
-/* HTTPS 正常: 中性浅灰, 不奖励及格状态。 */
+/* pref=off: 完全不显示安全指示线。 */
+#TabsToolbar[tabomnibar-security="off"] .tab-security-line {
+  display: none !important;
+}
+
+/* HTTPS 正常: 不显示任何线条, 保持 tab 干净。 */
 .tabbrowser-tab[tabsecurity="secure"] > .tab-stack > .tab-background > .tab-security-line {
-  background: #c8c8cc;
+  background: transparent;
 }
 
-/* HTTP 或证书异常: 琥珀警示色 + 虚线边框叠加线宽变化, 色觉障碍可区分。 */
+/* HTTP 或证书异常: 琥珀警示色 + 虚线, 色觉障碍可区分。 */
 .tabbrowser-tab[tabsecurity="insecure"] > .tab-stack > .tab-background > .tab-security-line,
 .tabbrowser-tab[tabsecurity="broken"] > .tab-stack > .tab-background > .tab-security-line {
   background: repeating-linear-gradient(

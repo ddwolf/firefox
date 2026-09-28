@@ -3831,8 +3831,13 @@ pref("distribution.mozillaonline.ignore", true);
 #endif
 
 // TabOmnibar: 双击 tab 原地变地址栏。
-// mode: "in"=tab 展开并铺满; "floatA"=固定大小浮层水平居中; "floatB"=固定大小浮层水平左端;
+// mode: "in"=tab 展开并铺满; "floatA"/"floatB"=固定大小浮层(位置由 floatPos 决定);
 //       "aligned"=浮层左对齐激活 tab 且向右扩展(tab 下方)。
 pref("browser.tabomnibar.mode", "in");
 // overlay: true=浮层与 tab 一平盖住 tab 栏; false=浮层位于 tab 栏下方。
 pref("browser.tabomnibar.overlay", true);
+// floatPos: float 模式水平锚定; "follow"=与激活 tab 左侧对齐; "center"=窗口水平居中。
+pref("browser.tabomnibar.floatPos", "follow");
+// securityIndicator: tab 底部安全指示线; "line"=默认, 仅 HTTP/证书异常时显示琥珀虚线;
+// "off"=完全不显示(注意: 失去不安全站点的视觉提示)。
+pref("browser.tabomnibar.securityIndicator", "line");

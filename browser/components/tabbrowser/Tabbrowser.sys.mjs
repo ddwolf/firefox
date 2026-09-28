@@ -1,4 +1,4 @@
-/* This Source Code Form is subject to the terms of the Mozilla Public
+﻿/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
@@ -9534,6 +9534,21 @@ export class Tabbrowser {
         event.preventDefault();
         return;
       }
+    }
+
+    // TabOmnibar: 活动 tab 上不显示 tooltip(地址栏展开在其上, 避免遮挡)。
+    // 编辑态期间(#active)也一律拦截, 防止 hover 时重新弹出。
+    let omn = this.tabContainer.tabOmnibar;
+    console.log("TabOmnibar.createTooltip:", {
+      tab: tab?.label,
+      isSelected: tab == this.selectedTab,
+      omnExists: !!omn,
+      omnActive: omn?.active
+    });
+    if (omn && (tab == this.selectedTab || omn.active)) {
+      console.log("TabOmnibar: tooltip prevented");
+      event.preventDefault();
+      return;
     }
 
     const tooltip = event.target;
