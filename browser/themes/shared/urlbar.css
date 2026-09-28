@@ -1,4 +1,4 @@
-/* This Source Code Form is subject to the terms of the Mozilla Public
+﻿/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
@@ -1724,7 +1724,44 @@ toolbar[inactive="true"] .urlbar,
  * 否则会透出红色条纹和圆角, 与 tab 割裂。 */
 #urlbar[tabomnibar] .urlbar-background {
   background-image: none !important;
+  border: none !important;
   border-radius: 0 !important;
+}
+
+/* 编辑态下 urlbar 浮在 tab 上方, 加阴影提示下方还有内容。 */
+#urlbar-container[tabomnibar-active],
+#urlbar[tabomnibar] .urlbar-background {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* TabOmnibar 编辑态: 隐藏左侧搜索引擎图标+下拉箭头(identity-box), 只保留输入框。 */
+/* 隐藏地址栏左侧 identity-box(站点图标/安全状态/搜索引擎图标)。 */
+#urlbar[tabomnibar] #identity-box,
+#urlbar[tabomnibar] #tracking-protection-icon-container,
+/* 隐藏搜索模式切换按钮(Google G + 下拉箭头)。 */
+#urlbar[tabomnibar] .searchmode-switcher,
+/* 隐藏远程控制按钮。 */
+#urlbar[tabomnibar] #remote-control-box {
+  display: none !important;
+}
+
+/* 隐藏 urlbarView 下拉面板顶部搜索行的搜索引擎图标和下拉箭头按钮。 */
+#urlbar[tabomnibar] .urlbarView-row[type="search"] .urlbarView-favicon,
+#urlbar[tabomnibar] .urlbarView-row[type="search"] .urlbarView-button-search,
+#urlbar[tabomnibar] .urlbarView-row[type="search"] .urlbarView-button {
+  display: none !important;
+}
+
+/* TabOmnibar 编辑态: urlbarView 下拉面板与 tab 视觉融合。
+ * 去掉 joint background 的 overhang (左右伸出), 让面板左右边缘和 urlbar 对齐,
+ * 去掉独立边框/阴影, 顶部圆角清零(和 urlbar 底部无缝连接)。 */
+/* 直接覆盖 inset-inline, 不依赖 CSS 变量(变量覆盖可能被原生规则覆盖)。 */
+#urlbar[tabomnibar] .urlbarView-background {
+  inset-inline: 0px !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-start-start-radius: 0 !important;
+  border-start-end-radius: 0 !important;
 }
 
 /* urlbar 自身的 focus 光环(紫框)一并清除。 */
@@ -1753,14 +1790,23 @@ toolbar[inactive="true"] .urlbar,
   z-index: 100 !important;
 }
 
+/* 浮层与 tab 视觉融合: 无边框/阴影, 背景与工具栏一致, 顶部圆角去掉
+ * (浮层在 tab 下方, 顶部和 tab 底部无缝连接, 只保留底部圆角)。 */
 #urlbar-container[tabomnibar-float] {
   background-color: var(
     --toolbar-bgcolor,
     var(--toolbar-non-lwt-bgcolor, #f9f9fb)
   ) !important;
-  border-radius: 8px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+  border: none !important;
+  border-radius: 0 0 8px 8px !important;
+  box-sizing: border-box !important;
+  box-shadow: none !important;
   animation: tabomnibar-float-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* tab hover 提示含完整 URL, 放宽默认 40em 宽度限制。 */
+#tabbrowser-tab-tooltip {
+  max-width: min(90vw, 80em) !important;
 }
 
 @keyframes tabomnibar-float-in {
@@ -1772,4 +1818,10 @@ toolbar[inactive="true"] .urlbar,
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* 编辑态期间隐藏 tab tooltip(双保险, 防 XUL 内部路径绕过事件拦截)。 */
+#tabbrowser-tab-tooltip[tabomnibar-hidden] {
+  display: none !important;
+  pointer-events: none !important;
 }
