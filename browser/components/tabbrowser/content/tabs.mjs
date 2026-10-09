@@ -312,6 +312,10 @@ export class MozTabbrowserTabs extends MozElements.TabsBase {
     if (!this._showTabHoverPreview) {
       return;
     }
+    // TabOmnibar: 地址栏展开在活动 tab 上时, 阻止 hover 预览弹出遮挡。
+    if (this.tabOmnibar?.active && event.target == this.selectedTab) {
+      return;
+    }
     this.ensureTabPreviewPanelLoaded();
     this.previewPanel.activate(event.target);
   }

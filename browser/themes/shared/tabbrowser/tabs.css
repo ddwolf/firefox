@@ -3581,14 +3581,28 @@ toolbar:not(#TabsToolbar) #firefox-view-button {
   background: transparent;
 }
 
-/* HTTP 或证书异常: 琥珀警示色 + 虚线, 色觉障碍可区分。 */
+/* HTTP 或证书异常: 极淡的警示色, 不抢视觉焦点。 */
 .tabbrowser-tab[tabsecurity="insecure"] > .tab-stack > .tab-background > .tab-security-line,
 .tabbrowser-tab[tabsecurity="broken"] > .tab-stack > .tab-background > .tab-security-line {
-  background: repeating-linear-gradient(
-    90deg,
-    #f9a01b 0 4px,
-    #f9a01b33 4px 8px
-  );
-  border-block: 1px dashed #e08a00;
-  height: 3px;
+  background: #f9a01b66;
+  height: 1px;
+}
+
+/* TabOmnibar: hide active tab selected border when urlbar is overlaid on top. */
+tab[tabomnibar-active] {
+  box-shadow: none !important;
+}
+
+tab[tabomnibar-active] .tab-stack,
+tab[tabomnibar-active] .tab-background {
+  border-radius: var(--tab-border-radius) var(--tab-border-radius) 0 0 !important;
+  background-color: #ffffff !important;
+  background-image: none !important;
+}
+
+tab[tabomnibar-active]::before,
+tab[tabomnibar-active]::after {
+  box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
 }

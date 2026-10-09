@@ -276,8 +276,15 @@ export class TabOmnibar {
     tip?.hidePopup();
     // 鼠标仍在 tab 上时, XUL 会在 hidePopup 后重新触发 popupshowing。
     // 用一个标记位让 popupshowing 监听器在编辑态期间一律 preventDefault。
-        // 双保险: 直接给 tooltip 加 CSS 隐藏, 防止 XUL 内部路径绕过事件拦截。
+    // 双保险: 直接给 tooltip 加 CSS 隐藏, 防止 XUL 内部路径绕过事件拦截。
     tip?.setAttribute("tabomnibar-hidden", "true");
+
+    // 新版 Tab Hover Preview(THP)面板不走 XUL tooltip 事件, 需单独关闭。
+    let panel = this.#container.previewPanel;
+    if (panel) {
+      panel.deactivate();
+      panel.forceReset?.();
+    }
 
     if (this.#mode == "in") {
       if (!this.#enterInPlace(tab)) {
@@ -335,11 +342,12 @@ export class TabOmnibar {
     this.#applyFloatPosition(tab);
     urlbarContainer.setAttribute("tabomnibar-float", "");
     this.#container.setAttribute("tabomnibar-active", "");
+    tab.setAttribute("tabomnibar-active", "");
     urlbar.setAttribute("tabomnibar", "");
   }
 
   #applyFloatPosition(tab) {
-    let { left, top, width, height } = this.#floatLayout(tab);
+    let { left, top, width } = this.#floatLayout(tab);
     this.urlbarContainer.style.cssText =
       "display:block;position:absolute;left:" +
       left +
@@ -347,9 +355,16 @@ export class TabOmnibar {
       top +
       "px;width:" +
       width +
-      "px;height:" +
-      height +
-      "px;z-index:100;padding:0 8px;margin:0;";
+      "px;z-index:100;padding:0;margin:0;box-sizing:border-box;";
+
+    // Force urlbarView to fill the entire width of urlbar.
+    let view = this.urlbar.querySelector(".urlbarView");
+    if (view) {
+      view.style.width = "100%";
+      view.style.left = "0";
+      view.style.right = "0";
+      view.style.boxSizing = "border-box";
+    }
   }
 
   #floatLayout(tab) {
