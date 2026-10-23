@@ -28,15 +28,19 @@ const ZERO_DELAY_ACTIVATION_TIME = 300;
 // and the open panel without having it disappear before they get there.
 const HOVER_PANEL_STICKY_TIME = 400;
 
+var hoverLogLines = [];
 async function hoverLog(msg) {
   try {
     let { IOUtils } = ChromeUtils.importESModule(
       "resource://gre/modules/IOUtils.sys.mjs"
     );
+    hoverLogLines.push(msg);
+    if (hoverLogLines.length > 200) {
+      hoverLogLines = hoverLogLines.slice(-200);
+    }
     await IOUtils.write(
       "C:\\Users\\mycapital\\hover_log.txt",
-      new TextEncoder().encode(msg + "\n"),
-      { mode: "append" }
+      new TextEncoder().encode(hoverLogLines.join("\n") + "\n")
     );
   } catch (e) {}
 }

@@ -12,8 +12,6 @@
   }
 
   @media not -moz-pref("browser.tabs.notes.enabled") {
-    pointer-events: none;
-
     .tab-preview-text-container {
       order: 1;
     }
