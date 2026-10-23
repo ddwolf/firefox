@@ -26,7 +26,20 @@ const ZERO_DELAY_ACTIVATION_TIME = 300;
 // open after the user's mouse leaves its anchor element. This is necessary to
 // allow the user to move their mouse between the anchor (tab or group label)
 // and the open panel without having it disappear before they get there.
-const HOVER_PANEL_STICKY_TIME = 100;
+const HOVER_PANEL_STICKY_TIME = 400;
+
+async function hoverLog(msg) {
+  try {
+    let { IOUtils } = ChromeUtils.importESModule(
+      "resource://gre/modules/IOUtils.sys.mjs"
+    );
+    await IOUtils.write(
+      "C:\\Users\\mycapital\\hover_log.txt",
+      new TextEncoder().encode(msg + "\n"),
+      { mode: "append" }
+    );
+  } catch (e) {}
+}
 
 /**
  * Shared module that contains logic for the tab hover preview (THP) and tab
@@ -193,8 +206,10 @@ export default class TabHoverPanelSet {
     const timer = this.#win.setTimeout(() => {
       this.#deactivateTimers.delete(panel);
       if (panel.hoverTargets?.some(t => t.matches(":hover"))) {
+        hoverLog("sticky timer: still hovering a target, keep open");
         return;
       }
+      hoverLog("sticky timer: hiding");
       this.#doDeactivate(panel);
     }, HOVER_PANEL_STICKY_TIME);
     this.#deactivateTimers.set(panel, timer);
@@ -206,6 +221,10 @@ export default class TabHoverPanelSet {
       this.#win.clearTimeout(timer);
       this.#deactivateTimers.delete(panel);
     }
+  }
+
+  cancelDeactivate(panel) {
+    this.#clearDeactivateTimer(panel);
   }
 
   #doDeactivate(panel) {
@@ -349,6 +368,15 @@ class TabPanel extends HoverPanel {
   /** @type {DOMElement|null} */
   #addNoteButton;
 
+  /** @type {DOMElement|null} */
+  #navBack;
+
+  /** @type {DOMElement|null} */
+  #navFwd;
+
+  /** @type {DOMElement|null} */
+  #navSecurity;
+
   constructor(panel, panelSet) {
     super(panel, panelSet);
 
@@ -391,6 +419,29 @@ class TabPanel extends HoverPanel {
     this.#addNoteButton.addEventListener("click", () =>
       this.#openTabNotePanel()
     );
+
+    // TabOmnibar: 导航按钮 (后退/前进), 目标是当前 hover 的 tab。
+    this.#navBack = this.panelElement.querySelector(".tab-preview-nav-back");
+    this.#navFwd = this.panelElement.querySelector(".tab-preview-nav-fwd");
+    this.#navSecurity = this.panelElement.querySelector(".tab-preview-nav-security");
+    this.#navBack.addEventListener("click", e => {
+      e.stopPropagation();
+      this.#tab?.linkedBrowser.goBack();
+    });
+    this.#navFwd.addEventListener("click", e => {
+      e.stopPropagation();
+      this.#tab?.linkedBrowser.goForward();
+    });
+
+    // 鼠标移入面板时取消关闭, 移出面板时再关闭。
+    this.panelElement.addEventListener("mouseenter", () => {
+      hoverLog("panel mouseenter -> cancel deactivate");
+      this.panelSet.cancelDeactivate(this);
+    });
+    this.panelElement.addEventListener("mouseleave", () => {
+      hoverLog("panel mouseleave -> deactivate");
+      this.deactivate();
+    });
   }
 
   /**
@@ -422,6 +473,7 @@ class TabPanel extends HoverPanel {
   }
 
   activate(tab) {
+    hoverLog("activate tab");
     if (this.#tab === tab && this.panelElement.state == "open") {
       return;
     }
@@ -469,9 +521,7 @@ class TabPanel extends HoverPanel {
    * @param {boolean} [options.force=false]
    */
   deactivate(leavingTab = null, { force = false } = {}) {
-    if (!this._prefUseTabNotes) {
-      force = true;
-    }
+    hoverLog(`deactivate force=${force} leavingTab=${!!leavingTab}`);
     if (leavingTab) {
       if (this.#tab != leavingTab) {
         return;
@@ -496,7 +546,7 @@ class TabPanel extends HoverPanel {
   }
 
   get hoverTargets() {
-    let targets = [];
+    let targets = [this.panelElement];
     if (this.#interactiveArea.childNodes.length) {
       targets.push(this.#interactiveArea);
     }
@@ -620,6 +670,31 @@ class TabPanel extends HoverPanel {
       : "";
   }
 
+  #updateNav() {
+    let browser = this.#tab?.linkedBrowser;
+    if (!browser) {
+      return;
+    }
+    this.#navBack.disabled = !browser.canGoBack;
+    this.#navFwd.disabled = !browser.canGoForward;
+    let state = browser.securityUI?.state ?? 0;
+    let sec;
+    if (state & Ci.nsIWebProgressListener.STATE_IS_BROKEN) {
+      sec = "broken";
+    } else if (state & Ci.nsIWebProgressListener.STATE_IS_INSECURE) {
+      sec = "insecure";
+    } else if (state & Ci.nsIWebProgressListener.STATE_IS_SECURE) {
+      sec = "secure";
+    } else {
+      sec = "neutral";
+    }
+    if (sec == "neutral") {
+      this.#navSecurity.removeAttribute("sec");
+    } else {
+      this.#navSecurity.setAttribute("sec", sec);
+    }
+  }
+
   #updateContainerIndicator() {
     const indicator = this.panelElement.querySelector(
       ".tab-preview-container-indicator"
@@ -678,6 +753,7 @@ class TabPanel extends HoverPanel {
       this.#displayURI;
 
     this.#updateContainerIndicator();
+    this.#updateNav();
 
     if (lazy.Tabbrowser.prefs.showPidAndActiveness) {
       this.panelElement.querySelector(".tab-preview-pid").textContent =

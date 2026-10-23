@@ -1690,24 +1690,16 @@ toolbar[inactive="true"] .urlbar,
   position: relative !important;
 }
 
-/* #urlbar 编辑态: 完全透明背景(让 tab-background 的选中色透上来),
- * 零圆角(由 tab-stack 自身圆角裁剪), 无边框阴影, 100% 铺满容器。 */
+/* #urlbar 编辑态: 只去掉 focus ring / 边框, 保留原生 border-radius,
+ * 让 .urlbar-background 在 popover-open 时自行扩展成完整圆角白面板。 */
 #urlbar[tabomnibar],
 #urlbar[tabomnibar]:focus,
 #urlbar[tabomnibar]:focus-visible,
 #urlbar[tabomnibar][focused] {
   -moz-appearance: none !important;
   appearance: none !important;
-  background: transparent !important;
   border: none !important;
-  box-shadow: none !important;
   outline: none !important;
-  border-radius: 0 !important;
-  height: 100% !important;
-  width: 100% !important;
-  min-height: 0 !important;
-  padding-block: 0 !important;
-  margin: 0 !important;
 }
 
 #urlbar[tabomnibar] .urlbar-input,
@@ -1730,103 +1722,41 @@ toolbar[inactive="true"] .urlbar,
   text-shadow: none !important;
 }
 
-/* .urlbar-background 是原生背景层(带斜纹渐变/圆角/focus ring), 编辑态下必须清掉,
- * 让 tab 的选中色透上来, 输入框和 tab 成为一个整体。 */
-#urlbar[tabomnibar] .urlbar-background,
-#urlbar[tabomnibar] .urlbar-background:focus,
-#urlbar[tabomnibar] .urlbar-background:focus-visible {
-  background-image: none !important;
-  background-color: #ffffff !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
+/* TabOmnibar: 尽量保留原生 urlbar 外观。
+ * 原生在 popover-open 时, .urlbar-background 与 .urlbarView-background
+ * 会通过 joint background 机制合并成一个完整圆角白面板(含阴影)。
+ * 这里只覆盖定位/隐藏图标, 不动 radius/background/shadow。 */
 
-#urlbar-container[tabomnibar-active],
 #urlbar-container[tabomnibar-float] {
-  box-shadow: none !important;
   border: none !important;
-  outline: none !important;
+  box-shadow: none !important;
+  animation: tabomnibar-float-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* TabOmnibar 编辑态: 保留 identity-box(站点图标/安全状态) 和搜索引擎切换按钮。 */
+/* 隐藏不需要的图标, 保留 identity-box(站点图标)。 */
 #urlbar[tabomnibar] #tracking-protection-icon-container,
 #urlbar[tabomnibar] #remote-control-box {
   display: none !important;
 }
 
-/* TabOmnibar 编辑态: urlbarView 下拉面板与 tab 视觉融合。
- * 关键: 保留原生 joint background 的对齐机制，只在 float/overlay=false 时把
- * view 背景层的左右外扩收敛为 0，让它和输入框共用同一外边界。 */
-#urlbar[tabomnibar] .urlbarView {
-  margin: 0 !important;
-  margin-top: 0 !important;
-  padding: 0 !important;
-  background: transparent !important;
-  border: none !important;
-  width: 100% !important;
-  left: 0 !important;
-  right: 0 !important;
-  box-sizing: border-box !important;
-}
-
-#urlbar[tabomnibar] .urlbarView-background {
-  background: #ffffff !important;
-  clip-path: none !important;
+/* TabOmnibar: popover-open 时去掉原生 overhang, 让建议卡片与输入行同宽。
+ * 原生 viewBg 会外扩 5px, urlbarBg 外扩量不同, 导致"下方突然变宽"。 */
+#urlbar[tabomnibar][popover-open] .urlbarView-background {
   inset-inline: 0 !important;
-  inset-block: 0 !important;
-  border-radius: 0 0 12px 12px !important;
-  box-sizing: border-box !important;
-  box-shadow: none !important;
 }
 
-#urlbar[tabomnibar] .urlbarView-results {
-  padding-inline: 0 !important;
+#urlbar[tabomnibar][popover-open] .urlbar-background {
+  inset-inline: 0 !important;
 }
 
-#urlbar[tabomnibar] .urlbarView-row {
-  padding-inline: 12px !important;
-  min-height: 32px !important;
-  border-radius: 8px !important;
+/* TabOmnibar: 输入行与上方 tab 连接, 顶部圆角去掉, 只保留底部圆角。 */
+#urlbar[tabomnibar] .urlbar-background {
+  border-radius: 0 0 24px 24px !important;
 }
 
-#urlbar[tabomnibar] .urlbarView-row-inner {
-  padding-inline-start: 0 !important;
-}
-
-#urlbar[tabomnibar] .urlbarView-row[type="search"] .urlbarView-row-inner {
-  padding-inline-start: 0 !important;
-}
-
-#urlbar[tabomnibar] #identity-box {
-  padding-inline: 12px 0 !important;
-  margin-inline: 0 !important;
-}
-
-#urlbar[tabomnibar] .urlbar-input-box {
-  padding-inline: 12px !important;
-}
-
-#urlbar[tabomnibar] #page-action-buttons {
-  padding-inline-end: 12px !important;
-}
-
-/* urlbar 自身的 focus 光环(紫框)一并清除。 */
-#urlbar[tabomnibar][focused],
-#urlbar[tabomnibar]:focus-within,
-#urlbar-container[tabomnibar-float],
-#urlbar-container[tabomnibar-float] * {
-  outline: none !important;
-  box-shadow: none !important;
-  border: none !important;
-}
-
-#urlbar[tabomnibar] .urlbar-background,
-#urlbar[tabomnibar] .urlbar-background * {
-  outline: none !important;
-  box-shadow: none !important;
-  border: none !important;
+/* popover-open 时, 输入行底部也没有圆角(与建议卡片连接)。 */
+#urlbar[tabomnibar][popover-open] .urlbar-background {
+  border-radius: 0 !important;
 }
 
 /* ===== TabOmnibar float/aligned 模式 (browser.tabomnibar.mode = floatA/floatB/aligned) =====
@@ -1866,11 +1796,9 @@ toolbar[inactive="true"] .urlbar,
 @keyframes tabomnibar-float-in {
   from {
     opacity: 0;
-    transform: translateY(-6px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 

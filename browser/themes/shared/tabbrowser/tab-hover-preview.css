@@ -31,6 +31,59 @@
   padding: var(--space-small);
 }
 
+/* TabOmnibar: 顶部导航条 (后退/前进/可信标记)。 */
+.tab-preview-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xxsmall);
+  padding: var(--space-xxsmall) var(--space-small);
+  border-bottom: 1px solid var(--border-color-deemphasized);
+
+  /* 鼠标移到面板上时才允许点击, 否则 pointer-events:none 会拦截。 */
+  pointer-events: auto;
+
+  .tab-preview-nav-back,
+  .tab-preview-nav-fwd {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: var(--border-radius-small);
+    -moz-context-properties: fill;
+    fill: currentColor;
+  }
+
+  .tab-preview-nav-back {
+    list-style-image: url("chrome://browser/skin/back.svg");
+  }
+  .tab-preview-nav-fwd {
+    list-style-image: url("chrome://browser/skin/forward.svg");
+  }
+
+  .tab-preview-nav-security {
+    margin-inline-start: auto;
+    width: 16px;
+    height: 16px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    -moz-context-properties: fill;
+    fill: currentColor;
+  }
+
+  .tab-preview-nav-security[sec="secure"] {
+    background-image: url("chrome://browser/skin/security-icons/secure.svg");
+    fill: #16a34a;
+  }
+  .tab-preview-nav-security[sec="insecure"] {
+    background-image: url("chrome://browser/skin/security-icons/not-secure.svg");
+    fill: #d97706;
+  }
+  .tab-preview-nav-security[sec="broken"] {
+    background-image: url("chrome://browser/skin/security-icons/broken.svg");
+    fill: #dc2626;
+  }
+}
+
 .tab-preview-content-interactive:not(:empty) {
   padding-block-end: 0;
 }

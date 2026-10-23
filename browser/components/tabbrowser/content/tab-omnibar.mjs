@@ -255,6 +255,12 @@ export class TabOmnibar {
    * 双击当前已激活 tab 时进入 Omnibar 态。
    */
   maybeEnter(tab) {
+    IOUtils.write(
+      "C:\\Users\\mycapital\\omnibar_layout.txt",
+      new TextEncoder().encode(
+        `maybeEnter: active=${this.#active} pinned=${tab.pinned} selected=${tab == this.window.gBrowser.selectedTab} mode=${this.#mode}\n`
+      )
+    ).catch(e => console.log("TOB dump:", e));
     if (
       this.#active ||
       tab.pinned ||
@@ -344,6 +350,56 @@ export class TabOmnibar {
     this.#container.setAttribute("tabomnibar-active", "");
     tab.setAttribute("tabomnibar-active", "");
     urlbar.setAttribute("tabomnibar", "");
+    this.#dumpLayout(tab, "enterFloat");
+    let view = urlbar.querySelector(".urlbarView");
+    let dumpAfter = () => {
+      view.removeEventListener("popupshown", dumpAfter);
+      this.window.setTimeout(() => this.#dumpLayout(tab, "popover-open"), 100);
+    };
+    view.addEventListener("popupshown", dumpAfter);
+  }
+
+  #dumpLayout(tab, tag) {
+    try {
+      let r = el => {
+        let b = el?.getBoundingClientRect();
+        return b
+          ? `l=${Math.round(b.left)} t=${Math.round(b.top)} r=${Math.round(b.right)} b=${Math.round(b.bottom)} w=${Math.round(b.width)} h=${Math.round(b.height)}`
+          : "null";
+      };
+      let cs = el => (el ? getComputedStyle(el) : null);
+      let urlbar = this.urlbar;
+      let view = urlbar.querySelector(".urlbarView");
+      let viewBg = urlbar.querySelector(".urlbarView-background");
+      let urlbarBg = urlbar.querySelector(".urlbar-background");
+      let out = [
+        `=== TabOmnibar dump [${tag}] mode=${this.#mode} overlay=${this.#overlay} floatPos=${this.#floatPos} ===`,
+        `strip: ${r(this.#floatStrip())}`,
+        `tab: ${r(tab)}`,
+        `urlbarContainer: ${r(this.urlbarContainer)}`,
+        `urlbarContainer.style: ${this.urlbarContainer.style.cssText}`,
+        `urlbarContainer.computed top: ${cs(this.urlbarContainer).top} position: ${cs(this.urlbarContainer).position} transform: ${cs(this.urlbarContainer).transform} margin: ${cs(this.urlbarContainer).margin}`,
+        `urlbar: ${r(urlbar)}`,
+        `  urlbarBg: ${r(urlbarBg)}`,
+        `  urlbarBg.radius: ${cs(urlbarBg).borderRadius}`,
+        `  urlbarBg.bg: ${cs(urlbarBg).backgroundColor}`,
+        `  urlbarBg.insetInline: ${cs(urlbarBg).insetInline}`,
+        `  urlbarBg.insetBlock: ${cs(urlbarBg).insetBlock}`,
+        `view: ${r(view)}`,
+        `  viewBg: ${r(viewBg)}`,
+        `  viewBg.radius: ${cs(viewBg).borderRadius}`,
+        `  viewBg.bg: ${cs(viewBg).backgroundColor}`,
+        `  viewBg.insetInline: ${cs(viewBg).insetInline}`,
+        `  viewBg.insetBlock: ${cs(viewBg).insetBlock}`,
+        `  viewBg.clipPath: ${cs(viewBg).clipPath}`,
+        `urlbar.open: ${urlbar.hasAttribute("popover-open")} focused: ${urlbar.hasAttribute("focused")}`,
+      ].join("\n");
+      IOUtils.write("C:\\Users\\mycapital\\omnibar_layout.txt", new TextEncoder().encode(out)).catch(e =>
+        console.log("TOB dump write:", e)
+      );
+    } catch (e) {
+      console.log("TOB dump failed:", e);
+    }
   }
 
   #applyFloatPosition(tab) {
@@ -356,15 +412,6 @@ export class TabOmnibar {
       "px;width:" +
       width +
       "px;z-index:100;padding:0;margin:0;box-sizing:border-box;";
-
-    // Force urlbarView to fill the entire width of urlbar.
-    let view = this.urlbar.querySelector(".urlbarView");
-    if (view) {
-      view.style.width = "100%";
-      view.style.left = "0";
-      view.style.right = "0";
-      view.style.boxSizing = "border-box";
-    }
   }
 
   #floatLayout(tab) {
