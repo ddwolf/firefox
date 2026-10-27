@@ -272,6 +272,8 @@ export class TabOmnibar {
 
     // 进入新编辑态前, 先清理上一次残留的压缩状态(避免连续开 tab 时 tab 宽度不一致)。
     this.#clearSqueezedTabs();
+    // 清理可能残留的 active 标记(竞态下多个 tab 白底无标题)。
+    this.#clearActiveFromAllTabs();
 
     this.#active = true;
     this.#activeTab = tab;
@@ -348,7 +350,8 @@ export class TabOmnibar {
     this.#applyFloatPosition(tab);
     urlbarContainer.setAttribute("tabomnibar-float", "");
     this.#container.setAttribute("tabomnibar-active", "");
-    tab.setAttribute("tabomnibar-active", "");
+    // float 模式下 urlbar 位于 tab 下方, tab 保持原样(标题可见、正常形状),
+    // 不设置 tab 级 tabomnibar-active(那会让 tab 变白、隐藏标题)。
     urlbar.setAttribute("tabomnibar", "");
     this.#dumpLayout(tab, "enterFloat");
     let view = urlbar.querySelector(".urlbarView");
@@ -393,6 +396,7 @@ export class TabOmnibar {
         `  viewBg.insetBlock: ${cs(viewBg).insetBlock}`,
         `  viewBg.clipPath: ${cs(viewBg).clipPath}`,
         `urlbar.open: ${urlbar.hasAttribute("popover-open")} focused: ${urlbar.hasAttribute("focused")}`,
+        `tabs with active: ${[...this.#container.querySelectorAll(".tabbrowser-tab[tabomnibar-active]")].map(t => t._tPos).join(",")}`,
       ].join("\n");
       IOUtils.write("C:\\Users\\mycapital\\omnibar_layout.txt", new TextEncoder().encode(out)).catch(e =>
         console.log("TOB dump write:", e)
@@ -473,6 +477,7 @@ export class TabOmnibar {
     urlbar.removeAttribute("tabomnibar");
     urlbarContainer.removeAttribute("tabomnibar-float");
     activeTab?.removeAttribute("tabomnibar-active");
+    this.#clearActiveFromAllTabs();
     container.removeAttribute("tabomnibar-active");
     strip.removeAttribute("tabomnibar-float");
     strip.removeAttribute("tabomnibar-mode");
@@ -515,6 +520,18 @@ export class TabOmnibar {
       t.style.minWidth = "";
     }
     this.#squeezedTabs = [];
+  }
+
+  /**
+   * 从所有 tab 上移除 tabomnibar-active, 防止连续切换/竞态导致多个 tab
+   * 残留在白底无标题状态。
+   */
+  #clearActiveFromAllTabs() {
+    for (let t of this.#container.querySelectorAll(
+      ".tabbrowser-tab[tabomnibar-active]"
+    )) {
+      t.removeAttribute("tabomnibar-active");
+    }
   }
 
   /**
