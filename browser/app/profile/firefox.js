@@ -3879,10 +3879,11 @@ pref("distribution.mozillaonline.ignore", true);
   pref("browser.macAppMenu.setAsDefaultShown", false);
 #endif
 
-// TabOmnibar: 双击 tab 原地变地址栏。
-// mode: "in"=tab 展开并铺满; "floatA"/"floatB"=固定大小浮层(位置由 floatPos 决定);
+// TabOmnibar: 单击已选中 tab, 在其下方打开地址栏。标签本身不改变尺寸。
+// mode: "floatA"(默认)/"floatB"=固定大小浮层(位置由 floatPos 决定);
 //       "aligned"=浮层左对齐激活 tab 且向右扩展(tab 下方)。
-pref("browser.tabomnibar.mode", "in");
+// "in" 已移除。配置里若仍是 "in" 或其他未知值, 运行时按 floatA 处理。
+pref("browser.tabomnibar.mode", "floatA");
 // overlay: true=浮层与 tab 一平盖住 tab 栏; false=浮层位于 tab 栏下方。
 pref("browser.tabomnibar.overlay", true);
 // floatPos: float 模式水平锚定; "follow"=与激活 tab 左侧对齐; "center"=窗口水平居中。

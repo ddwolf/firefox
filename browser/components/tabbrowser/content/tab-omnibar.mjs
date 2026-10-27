@@ -16,7 +16,6 @@
 // browser.tabomnibar.floatPos: float 浮层水平锚定; "follow"=与激活 tab 左侧对齐, "center"=窗口水平居中。
 
 const FLOAT_WIDTH = 480;
-const FLOAT_HEIGHT = 44;
 const { STATE_IS_SECURE, STATE_IS_INSECURE, STATE_IS_BROKEN } =
   Ci.nsIWebProgressListener;
 
@@ -147,14 +146,13 @@ export class TabOmnibar {
       case "TabOpen": {
         let newTab = event.target;
         if (this.#active) {
-          // 编辑态期间打开新 tab: 先退出当前编辑态(旧 tab 收缩成普通 tab),
-          // 同时清除旧 tab 的延迟清理定时器, 避免干扰新 tab 的 enter。
+          // 编辑态期间打开新 tab: 先退出当前编辑态, 再让新 tab 进入。
           this.#pendingLayoutRefresh = true;
           event.stopImmediatePropagation();
           this.exit();
         }
-        // 新 tab 打开后自动进入编辑态(展开成 urlbar)。
-        // 延迟 80ms 确保旧 tab 退出动画已开始, 同一时刻最多两个 tab 在动画中。
+        // 新 tab 打开后自动进入编辑态。
+        // 延迟 80ms, 避免和上一个 tab 的退出叠在同一帧。
         this.window.setTimeout(() => {
           this.maybeEnter(newTab);
         }, 80);
@@ -257,7 +255,7 @@ export class TabOmnibar {
   }
 
   /**
-   * 双击当前已激活 tab 时进入 Omnibar 态。
+   * 在当前已选中 tab 下方打开地址栏。tab 自身不改变尺寸。
    */
   maybeEnter(tab) {
     IOUtils.write(
@@ -309,8 +307,7 @@ export class TabOmnibar {
     this.#applyFloatPosition(tab);
     urlbarContainer.setAttribute("tabomnibar-float", "");
     this.#container.setAttribute("tabomnibar-active", "");
-    // float 模式下 urlbar 位于 tab 下方, tab 保持原样(标题可见、正常形状),
-    // 不设置 tab 级 tabomnibar-active(那会让 tab 变白、隐藏标题)。
+    // 地址栏是独立浮层, 不改 tab 自身的尺寸和外观。
     urlbar.setAttribute("tabomnibar", "");
     this.#dumpLayout(tab, "enterFloat");
     let view = urlbar.querySelector(".urlbarView");

@@ -1647,9 +1647,8 @@ toolbar[inactive="true"] .urlbar,
   }
 }
 
-/* TabOmnibar: 传统地址栏(nav-bar)常驻完全隐藏。双击 tab 时,
- * tab-omnibar.mjs 把 #urlbar-container 直接 DOM 移动到激活 tab 的
- * .tab-stack 里, urlbar 成为 tab 内容的一部分(真正一个组件, 无浮起/飞入)。 */
+/* TabOmnibar: 传统地址栏(nav-bar)常驻完全隐藏。单击已选中 tab 时,
+ * tab-omnibar.mjs 把 #urlbar-container 浮到该 tab 下方。tab 自身尺寸不变。 */
 
 /* nav-bar 永久 0 高度: 不占任何垂直空间。 */
 #nav-bar {
@@ -1669,25 +1668,6 @@ toolbar[inactive="true"] .urlbar,
 /* 非编辑态: urlbar-container 不可见。 */
 #urlbar-container {
   display: none;
-}
-
-/* 编辑态: urlbar-container 绝对定位铺满整个 tab 元素(含 padding),
- * 完全盖住 tab 的 favicon/标题, 视觉上地址栏就是 tab 本身。 */
-.tabbrowser-tab[tabomnibar-active] > #urlbar-container {
-  display: block !important;
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  z-index: 10 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-/* tab 元素作为 absolute 定位参考。 */
-.tabbrowser-tab[tabomnibar-active] {
-  position: relative !important;
 }
 
 /* #urlbar 编辑态: 只去掉 focus ring / 边框, 保留原生 border-radius,

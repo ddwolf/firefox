@@ -829,8 +829,8 @@ export class MozTabbrowserTab extends MozElements.MozTab {
 
     let tabContainer = this.container;
 
-    // TabOmnibar: double-click on the currently selected tab expands it in place
-    // into the address bar. Dragging is inherently excluded (it needs movement).
+    // TabOmnibar: double-click on the currently selected tab opens the urlbar
+    // under that tab. The tab itself does not resize.
     if (
       !tabContainer._closeTabByDblclick &&
       !tabContainer.verticalMode &&
