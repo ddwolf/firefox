@@ -3880,14 +3880,12 @@ pref("distribution.mozillaonline.ignore", true);
 #endif
 
 // TabOmnibar: 单击已选中 tab, 在其下方打开地址栏。标签本身不改变尺寸。
-// mode: "floatA"(默认)/"floatB"=固定大小浮层(位置由 floatPos 决定);
-//       "aligned"=浮层左对齐激活 tab 且向右扩展(tab 下方)。
-// "in" 已移除。配置里若仍是 "in" 或其他未知值, 运行时按 floatA 处理。
-pref("browser.tabomnibar.mode", "floatA");
-// overlay: true=浮层与 tab 一平盖住 tab 栏; false=浮层位于 tab 栏下方。
-pref("browser.tabomnibar.overlay", true);
-// floatPos: float 模式水平锚定; "follow"=与激活 tab 左侧对齐; "center"=窗口水平居中。
-pref("browser.tabomnibar.floatPos", "follow");
+// mode: "float_follow"(默认, 旧名 floatA)=浮层左边缘与激活 tab 对齐;
+//       "float_center"(旧名 floatB)=浮层在窗口视觉正中, 不跟 tab 移动。
+// "in" 与 "aligned" 已移除。配置里若仍是这两个值或其他未知值, 运行时按 float_follow 处理。
+// 旧的 browser.tabomnibar.floatPos 不再使用, 水平位置由 mode 决定。
+pref("browser.tabomnibar.mode", "float_follow");
+// 浮层始终位于 tab 栏下方。browser.tabomnibar.overlay 已停用。
 // securityIndicator: tab 底部安全指示线; "line"=默认, 仅 HTTP/证书异常时显示琥珀虚线;
 // "off"=完全不显示(注意: 失去不安全站点的视觉提示)。
 pref("browser.tabomnibar.securityIndicator", "line");

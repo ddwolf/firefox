@@ -1,6 +1,6 @@
 # TabOmnibar —— Firefox 标签页即地址栏 · UI 设计需求文档
 
-> 本文档用于交付给专业 UI/交互设计 AI，描述一个基于 Firefox 源码的浏览器界面改造方案 **TabOmnibar（标签页地址栏）** 的设计目标、当前实现、视觉现状与待解决的设计问题。请基于此输出一套完整、统一、可落地的视觉与交互设计方案。
+> 本文档描述 TabOmnibar 的背景、现状和要解决的问题。边角的视觉与交互规格见同目录的 `TabOmnibar-UI设计方案.md`，示意图是 `TabOmnibar-UI设计方案.png`。
 
 ---
 
@@ -63,24 +63,23 @@
 
 ### 2.2 显示模式（可通过 about:config 切换）
 
-`in` 模式已移除，不再提供。该模式把地址栏铺进标签、并让标签展开。地址栏打开时再切换标签，各标签的尺寸和位置会剧烈跳动。
+`in` 与 `aligned` 已移除，不再提供。`in` 会把地址栏铺进标签并让标签展开，切换标签时尺寸和位置剧烈跳动。`aligned` 是向右拉宽的浮层变体，不再保留。
 
 | 模式 `mode` | 地址栏位置 | 标签自身变化 | 说明 |
 |---|---|---|---|
-| `floatA`（默认） | 固定大小浮层，标签下方 | **标签保持原样** | 当前主推、用户最常用的模式 |
-| `floatB` | 同 floatA（保留命名） | 标签保持原样 | 与 floatA 行为一致 |
-| `aligned` | 左对齐标签，向右扩展到标签栏右端 | 标签保持原样 | 宽浮层变体 |
+| `float_follow`（默认，旧名 `floatA`） | 固定大小浮层，标签下方，左边缘与该标签对齐，跟着标签走 | **标签保持原样** | 当前主推 |
+| `float_center`（旧名 `floatB`） | 固定大小浮层，标签栏下方，窗口视觉正中 | **标签保持原样** | 不跟标签的水平位置变动 |
 
 ### 2.3 相关配置项（prefs）
 
 | 配置 | 取值 | 含义 |
 |---|---|---|
-| `browser.tabomnibar.mode` | `floatA` / `floatB` / `aligned` | 显示模式。`in` 已移除，读到该值时按 `floatA` 处理 |
-| `browser.tabomnibar.overlay` | `true` / `false` | `true`=浮层与标签同一行盖住标签栏；`false`=浮层位于标签栏**下方** |
-| `browser.tabomnibar.floatPos` | `follow` / `center` | 浮层水平锚定：`follow`=与激活标签左侧对齐；`center`=窗口水平居中 |
+| `browser.tabomnibar.mode` | `float_follow` / `float_center` | 显示模式，同时决定水平位置。旧名 `floatA`→`float_follow`，`floatB`→`float_center`。`in` 与 `aligned` 已移除，读到时按 `float_follow` 处理 |
 | `browser.tabomnibar.securityIndicator` | `line` / `off` | 标签底部安全指示线开关 |
 
-**用户当前实际使用的主线配置：`mode=floatA`、`overlay=false`、`floatPos=follow`、`securityIndicator=line`。**
+`browser.tabomnibar.floatPos` 与 `browser.tabomnibar.overlay` 已停用。水平位置由 `mode` 决定。浮层始终位于标签栏下方，不再提供盖住标签栏的选项。
+
+**用户当前实际使用的主线配置：`mode=float_follow`、`securityIndicator=line`。**
 即：点击标签 → 一个 480px 宽的地址栏浮层，出现在该标签正下方，左边缘与标签对齐。
 
 ### 2.4 关键尺寸常量
@@ -142,7 +141,7 @@
 ## 5. 当前存在的设计问题（重点：需要设计 AI 解决）
 
 ### 5.1 【核心问题】标签、地址栏、建议卡片三者视觉割裂
-在 `floatA + overlay=false` 下，三者本应像原生一样融合成一块完整面板，但目前反复出现"明显分成几层"的问题：
+在 `float_follow` 下，三者本应像原生一样融合成一块完整面板，但目前反复出现"明显分成几层"的问题：
 
 - 标签是**圆角胶囊**，地址栏顶部是**直角**，两者连接处形态不统一。
 - 地址栏输入行与下方建议卡片之间出现缝隙、圆角错位或宽度不一致。

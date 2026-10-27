@@ -7,13 +7,11 @@
 // 标签自身的尺寸和位置始终不变。
 //
 // 显示模式（browser.tabomnibar.mode）:
-// - "floatA" (默认): 固定大小浮层; tab 自身不变。
-// - "floatB": 固定大小浮层(与 floatA 行为一致, 保留名称兼容); tab 自身不变。
-// - "aligned": 浮层左对齐激活 tab, 向右扩展到窗口右端, 位于 tab 下方; tab 自身不变。
-// "in"（地址栏铺进 tab、tab 展开）已移除: 打开期间切换 tab 时, 各 tab 尺寸和位置会剧烈跳动。
-// 旧配置里的 "in" 以及其他未知值按 "floatA" 处理。
-// browser.tabomnibar.overlay: true=浮层与 tab 一平盖住 tab 栏; false=浮层位于 tab 栏下方。
-// browser.tabomnibar.floatPos: float 浮层水平锚定; "follow"=与激活 tab 左侧对齐, "center"=窗口水平居中。
+// - "float_follow" (默认, 旧名 floatA): 固定大小浮层, 左边缘与激活 tab 对齐, 跟着 tab 走。
+// - "float_center" (旧名 floatB): 固定大小浮层, 放在窗口视觉正中, 不跟 tab 移动。
+// "in" 与 "aligned" 已移除。读到这两个值或其他未知值时按 "float_follow" 处理。
+// 浮层始终位于 tab 栏下方, 不盖住标签。browser.tabomnibar.overlay 已停用。
+// 水平位置由 mode 决定。旧的 browser.tabomnibar.floatPos 不再使用。
 
 const FLOAT_WIDTH = 480;
 const { STATE_IS_SECURE, STATE_IS_INSECURE, STATE_IS_BROKEN } =
@@ -26,9 +24,7 @@ export class TabOmnibar {
   #pendingLayoutRefresh = false;
   #urlbarOriginalParent = null;
   #urlbarOriginalNextSibling = null;
-  #mode = "floatA";
-  #overlay = true;
-  #floatPos = "follow";
+  #mode = "float_follow";
   #securityIndicator = "line";
 
   constructor(container) {
@@ -44,8 +40,6 @@ export class TabOmnibar {
 
     this.#readPrefs();
     Services.prefs.addObserver("browser.tabomnibar.mode", this);
-    Services.prefs.addObserver("browser.tabomnibar.overlay", this);
-    Services.prefs.addObserver("browser.tabomnibar.floatPos", this);
 
     container.addEventListener("TabSelect", this);
     container.addEventListener("TabOpen", this, true);
@@ -77,11 +71,7 @@ export class TabOmnibar {
     if (topic != "nsPref:changed") {
       return;
     }
-    if (
-      data == "browser.tabomnibar.mode" ||
-      data == "browser.tabomnibar.overlay" ||
-      data == "browser.tabomnibar.floatPos"
-    ) {
+    if (data == "browser.tabomnibar.mode") {
       this.#readPrefs();
       if (this.#active) {
         this.exit();
@@ -96,17 +86,15 @@ export class TabOmnibar {
   }
 
   #readPrefs() {
-    this.#mode = this.#normalizeMode(
-      Services.prefs.getStringPref("browser.tabomnibar.mode", "floatA")
+    let rawMode = Services.prefs.getStringPref(
+      "browser.tabomnibar.mode",
+      "float_follow"
     );
-    this.#overlay = Services.prefs.getBoolPref(
-      "browser.tabomnibar.overlay",
-      true
-    );
-    this.#floatPos = Services.prefs.getStringPref(
-      "browser.tabomnibar.floatPos",
-      "follow"
-    );
+    this.#mode = this.#normalizeMode(rawMode);
+    // 把旧名写回, about:config 里直接显示新名字。
+    if (rawMode != this.#mode) {
+      Services.prefs.setStringPref("browser.tabomnibar.mode", this.#mode);
+    }
     this.#securityIndicator = Services.prefs.getStringPref(
       "browser.tabomnibar.securityIndicator",
       "line"
@@ -115,17 +103,19 @@ export class TabOmnibar {
   }
 
   /**
-   * "in" 会改写 tab 尺寸, 打开地址栏时切换 tab 会让整条标签栏跳动, 已移除。
-   * 未知值和旧的 "float" 都落到 floatA。
+   * 旧名 floatA / floatB 分别对应 float_follow / float_center。
+   * "in" 与 "aligned" 已移除, 连同其他未知值落到 float_follow。
    */
   #normalizeMode(mode) {
     switch (mode) {
+      case "float_follow":
       case "floatA":
+        return "float_follow";
+      case "float_center":
       case "floatB":
-      case "aligned":
-        return mode;
+        return "float_center";
       default:
-        return "floatA";
+        return "float_follow";
     }
   }
 
@@ -332,7 +322,7 @@ export class TabOmnibar {
       let viewBg = urlbar.querySelector(".urlbarView-background");
       let urlbarBg = urlbar.querySelector(".urlbar-background");
       let out = [
-        `=== TabOmnibar dump [${tag}] mode=${this.#mode} overlay=${this.#overlay} floatPos=${this.#floatPos} ===`,
+        `=== TabOmnibar dump [${tag}] mode=${this.#mode} ===`,
         `strip: ${r(this.#floatStrip())}`,
         `tab: ${r(tab)}`,
         `urlbarContainer: ${r(this.urlbarContainer)}`,
@@ -380,30 +370,18 @@ export class TabOmnibar {
     let stripRect = strip.getBoundingClientRect();
     let height = stripRect.height;
     let left;
-    let width = FLOAT_WIDTH;
-    if (this.#mode == "floatA" || this.#mode == "floatB") {
-      if (this.#floatPos == "center") {
-        // 永远显示在浏览器窗口水平中间。
-        left =
-          Math.round((this.window.innerWidth - FLOAT_WIDTH) / 2) -
-          stripRect.left;
-      } else {
-        // 跟随激活 tab, 与 tab 左侧对齐。
-        left = Math.round(tabRect.left - stripRect.left);
-      }
+    if (this.#mode == "float_center") {
+      // 窗口视觉正中, 不跟激活 tab 的位置走。
+      left =
+        Math.round((this.window.innerWidth - FLOAT_WIDTH) / 2) -
+        stripRect.left;
     } else {
-      // aligned: 左对齐激活 tab, 位于 tab 下方, 向右扩到浏览器右边界(留 16px 边距)。
-      left = tabRect.left - stripRect.left;
-      let maxW = this.window.innerWidth - 16 - tabRect.left;
-      // 优先 480px, 但绝不越过右边界(极端贴右时缩窄)。
-      width = Math.min(Math.max(FLOAT_WIDTH, maxW), maxW);
+      // float_follow: 与激活 tab 左边缘对齐。
+      left = Math.round(tabRect.left - stripRect.left);
     }
-    // aligned 固定位于 tab 下方; float 由 overlay 决定(与 tab 一平或下方)。
-    let top =
-      this.#mode == "aligned" || !this.#overlay
-        ? stripRect.height
-        : 0;
-    return { left, top, width, height };
+    // 浮层始终位于 tab 栏下方。
+    let top = stripRect.height;
+    return { left, top, width: FLOAT_WIDTH, height };
   }
 
   #floatStrip() {
@@ -435,7 +413,6 @@ export class TabOmnibar {
     container.removeAttribute("tabomnibar-active");
     strip.removeAttribute("tabomnibar-float");
     strip.removeAttribute("tabomnibar-mode");
-    strip.removeAttribute("tabomnibar-overlay");
 
     if (this.#urlbarOriginalParent) {
       this.#urlbarOriginalParent.insertBefore(

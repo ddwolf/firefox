@@ -1739,7 +1739,7 @@ toolbar[inactive="true"] .urlbar,
   border-radius: 0 !important;
 }
 
-/* ===== TabOmnibar float/aligned 模式 (browser.tabomnibar.mode = floatA/floatB/aligned) =====
+/* ===== TabOmnibar 浮层 (browser.tabomnibar.mode = float_follow/float_center) =====
  * 浮层外观: 背景/圆角/阴影/动画。定位由 tab-omnibar.mjs 以 absolute + inline style
  * 相对 #TabsToolbar-customization-target 控制。urlbar 保持在 toolbar 内,
  * 从而满足 UrlbarInput 的 #canOpenPopover(要求 closest("toolbar")) 以打开下拉面板。 */
@@ -1748,7 +1748,7 @@ toolbar[inactive="true"] .urlbar,
   position: relative !important;
 }
 
-/* 允许浮层在 tab 栏下方(overlay=false / aligned)溢出显示, 否则会被
+/* 允许浮层在 tab 栏下方溢出显示, 否则会被
  * navigator-toolbox 的 overflow:clip 裁剪。nav-bar 已折叠, 溢出物只有浮层。
  * z-index 提升: 让整个 toolbar 区域(含溢出的浮层)盖在 browser-stack 内容之上。 */
 #navigator-toolbox {
