@@ -2,23 +2,19 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-// TabOmnibar: 双击激活标签页，将其原位变为地址栏（Omnibar）。
+// TabOmnibar: 单击已选中标签页, 在其下方打开地址栏（Omnibar）。
 // 复用全局单例 UrlbarInput（gURLBar），编辑态下传统地址栏（#nav-bar）完全折叠。
+// 标签自身的尺寸和位置始终不变。
 //
-// 三种模式（browser.tabomnibar.mode）:
-// - "in" (默认): urlbar-container DOM 移入激活 tab 并铺满, tab 按中点压缩规则展开。
-// - "floatA": 固定大小浮层; tab 自身不变。
+// 显示模式（browser.tabomnibar.mode）:
+// - "floatA" (默认): 固定大小浮层; tab 自身不变。
 // - "floatB": 固定大小浮层(与 floatA 行为一致, 保留名称兼容); tab 自身不变。
-// - "aligned": 浮层左对齐激活 tab, 向右扩展到 tab 栏右端, 位于 tab 下方; tab 自身不变。
+// - "aligned": 浮层左对齐激活 tab, 向右扩展到窗口右端, 位于 tab 下方; tab 自身不变。
+// "in"（地址栏铺进 tab、tab 展开）已移除: 打开期间切换 tab 时, 各 tab 尺寸和位置会剧烈跳动。
+// 旧配置里的 "in" 以及其他未知值按 "floatA" 处理。
 // browser.tabomnibar.overlay: true=浮层与 tab 一平盖住 tab 栏; false=浮层位于 tab 栏下方。
 // browser.tabomnibar.floatPos: float 浮层水平锚定; "follow"=与激活 tab 左侧对齐, "center"=窗口水平居中。
 
-const OMNIBAR_TRANSITION_MS = 280;
-const TAB_OMNIBAR_WIDTH = 360;
-const TAB_OMNIBAR_MIN_WIDTH = 280;
-const TAB_OMNIBAR_MAX_WIDTH = 420;
-const TAB_ICON_WIDTH = 44;
-const TAB_MIN_WIDTH = 100;
 const FLOAT_WIDTH = 480;
 const FLOAT_HEIGHT = 44;
 const { STATE_IS_SECURE, STATE_IS_INSECURE, STATE_IS_BROKEN } =
@@ -27,18 +23,14 @@ const { STATE_IS_SECURE, STATE_IS_INSECURE, STATE_IS_BROKEN } =
 export class TabOmnibar {
   #container;
   #active = false;
-    #activeTab = null;
-  #savedScrollLeft = 0;
+  #activeTab = null;
   #pendingLayoutRefresh = false;
-  #cleanupTimer = 0;
-  #squeezedTabs = [];
   #urlbarOriginalParent = null;
   #urlbarOriginalNextSibling = null;
-  #mode = "in";
+  #mode = "floatA";
   #overlay = true;
   #floatPos = "follow";
   #securityIndicator = "line";
-  activeWidth = 0;
 
   constructor(container) {
     this.#container = container;
@@ -105,9 +97,8 @@ export class TabOmnibar {
   }
 
   #readPrefs() {
-    this.#mode = Services.prefs.getStringPref(
-      "browser.tabomnibar.mode",
-      "in"
+    this.#mode = this.#normalizeMode(
+      Services.prefs.getStringPref("browser.tabomnibar.mode", "floatA")
     );
     this.#overlay = Services.prefs.getBoolPref(
       "browser.tabomnibar.overlay",
@@ -122,6 +113,21 @@ export class TabOmnibar {
       "line"
     );
     this.#applySecurityIndicatorPref();
+  }
+
+  /**
+   * "in" 会改写 tab 尺寸, 打开地址栏时切换 tab 会让整条标签栏跳动, 已移除。
+   * 未知值和旧的 "float" 都落到 floatA。
+   */
+  #normalizeMode(mode) {
+    switch (mode) {
+      case "floatA":
+      case "floatB":
+      case "aligned":
+        return mode;
+      default:
+        return "floatA";
+    }
   }
 
   #applySecurityIndicatorPref() {
@@ -145,7 +151,6 @@ export class TabOmnibar {
           // 同时清除旧 tab 的延迟清理定时器, 避免干扰新 tab 的 enter。
           this.#pendingLayoutRefresh = true;
           event.stopImmediatePropagation();
-          clearTimeout(this.#cleanupTimer);
           this.exit();
         }
         // 新 tab 打开后自动进入编辑态(展开成 urlbar)。
@@ -193,7 +198,7 @@ export class TabOmnibar {
         }
         break;
       case "resize":
-        if (this.#active && this.#mode != "in") {
+        if (this.#active) {
           this.#applyFloatPosition(this.#activeTab);
         }
         break;
@@ -270,11 +275,6 @@ export class TabOmnibar {
       return;
     }
 
-    // 进入新编辑态前, 先清理上一次残留的压缩状态(避免连续开 tab 时 tab 宽度不一致)。
-    this.#clearSqueezedTabs();
-    // 清理可能残留的 active 标记(竞态下多个 tab 白底无标题)。
-    this.#clearActiveFromAllTabs();
-
     this.#active = true;
     this.#activeTab = tab;
     this.#pendingLayoutRefresh = false;
@@ -294,52 +294,11 @@ export class TabOmnibar {
       panel.forceReset?.();
     }
 
-    if (this.#mode == "in") {
-      if (!this.#enterInPlace(tab)) {
-        this.#active = false;
-        this.#activeTab = null;
-        return;
-      }
-    } else {
-      this.#enterFloat(tab);
-    }
+    this.#enterFloat(tab);
 
     this.gURLBar.setURI({ uri: tab.linkedBrowser.currentURI });
     this.gURLBar.focus();
     this.gURLBar.select();
-  }
-
-  #enterInPlace(tab) {
-    let { urlbar, urlbarContainer } = this;
-    let container = this.#container;
-    this.#savedScrollLeft = this.arrowScrollbox.scrollPosition;
-
-    if (!this.#applyMidpointCompression(tab)) {
-      return false;
-    }
-
-    // 把 urlbarContainer 移到 tabContainer 末尾, 作为最后一个子元素。
-    // 这样它在 DOM 顺序上排在所有 tab 之后, 自然渲染在最上面, 不需要依赖 z-index。
-    this.#urlbarOriginalParent = urlbarContainer.parentNode;
-    this.#urlbarOriginalNextSibling = urlbarContainer.nextSibling;
-    container.appendChild(urlbarContainer);
-
-    // 计算 tab 相对于 tabContainer 的位置, 用 absolute 定位对齐。
-    let tabRect = tab.getBoundingClientRect();
-    let containerRect = container.getBoundingClientRect();
-    let left = tabRect.left - containerRect.left;
-    let top = tabRect.top - containerRect.top;
-
-    urlbarContainer.style.cssText =
-      "display:block;position:absolute;top:" + top + "px;left:" + left +
-      "px;bottom:0;z-index:100;padding:0;margin:0;width:" +
-      this.activeWidth +
-      "px;";
-
-    container.setAttribute("tabomnibar-active", "");
-    tab.setAttribute("tabomnibar-active", "");
-    urlbar.setAttribute("tabomnibar", "");
-    return true;
   }
 
   #enterFloat(tab) {
@@ -425,7 +384,7 @@ export class TabOmnibar {
     let height = stripRect.height;
     let left;
     let width = FLOAT_WIDTH;
-    if (this.#mode == "float" || this.#mode == "floatB" || this.#mode == "floatA") {
+    if (this.#mode == "floatA" || this.#mode == "floatB") {
       if (this.#floatPos == "center") {
         // 永远显示在浏览器窗口水平中间。
         left =
@@ -470,20 +429,16 @@ export class TabOmnibar {
       this.#container._handleTabSelect(true);
     }
 
-    let { urlbar, urlbarContainer, activeTab } = this;
+    let { urlbar, urlbarContainer } = this;
     let container = this.#container;
     let strip = this.#floatStrip();
 
     urlbar.removeAttribute("tabomnibar");
     urlbarContainer.removeAttribute("tabomnibar-float");
-    activeTab?.removeAttribute("tabomnibar-active");
-    this.#clearActiveFromAllTabs();
     container.removeAttribute("tabomnibar-active");
     strip.removeAttribute("tabomnibar-float");
     strip.removeAttribute("tabomnibar-mode");
     strip.removeAttribute("tabomnibar-overlay");
-
-    this.#clearSqueezedTabs();
 
     if (this.#urlbarOriginalParent) {
       this.#urlbarOriginalParent.insertBefore(
@@ -494,70 +449,8 @@ export class TabOmnibar {
     this.#urlbarOriginalParent = null;
     this.#urlbarOriginalNextSibling = null;
 
-    if (this.#mode == "in") {
-      clearTimeout(this.#cleanupTimer);
-      this.#cleanupTimer = setTimeout(() => {
-        urlbarContainer.style.cssText = "";
-        this.arrowScrollbox.scrollbox.scrollLeft = this.#savedScrollLeft;
-        this.#squeezedTabs = [];
-        this.#activeTab = null;
-      }, OMNIBAR_TRANSITION_MS + 50);
-      // 退出后立即恢复 tab 宽度(不等动画结束), 避免新 tab 进入时残留压缩状态。
-      this.#clearSqueezedTabs();
-    } else {
-      urlbarContainer.style.cssText = "";
-      this.#squeezedTabs = [];
-      this.#activeTab = null;
-    }
-  }
-
-  /**
-   * 清理所有被压缩 tab 的宽度样式, 恢复默认。
-   */
-  #clearSqueezedTabs() {
-    for (let t of this.#squeezedTabs) {
-      t.style.maxWidth = "";
-      t.style.minWidth = "";
-    }
-    this.#squeezedTabs = [];
-  }
-
-  /**
-   * 从所有 tab 上移除 tabomnibar-active, 防止连续切换/竞态导致多个 tab
-   * 残留在白底无标题状态。
-   */
-  #clearActiveFromAllTabs() {
-    for (let t of this.#container.querySelectorAll(
-      ".tabbrowser-tab[tabomnibar-active]"
-    )) {
-      t.removeAttribute("tabomnibar-active");
-    }
-  }
-
-  /**
-   * 中点压缩规则:
-   * - tab 中心 <= 视口中点: 左侧保持完整宽度, 当前 tab 向右展开, 右侧顺延、超出等宽缩窄。
-   * - tab 中心 > 视口中点: 左侧非 pinned 标签压缩为纯图标态, 释放空间给当前 tab。
-   * - pinned 标签位于独立容器, 天然排除。
-   */
-  #applyMidpointCompression(tab) {
-    let win = this.window;
-    let winUtils = win.windowUtils;
-    let arrow = this.arrowScrollbox;
-    // 可见视口 = scrollbox 内部区域（不含滚动按钮）。
-    let viewport = winUtils.getBoundsWithoutFlushing(arrow.scrollbox);
-
-    let expandWidth = Math.min(
-      TAB_OMNIBAR_MAX_WIDTH,
-      Math.max(TAB_OMNIBAR_MIN_WIDTH, TAB_OMNIBAR_WIDTH)
-    );
-    expandWidth = Math.min(expandWidth, Math.max(viewport.width - 60, 160));
-    this.activeWidth = expandWidth;
-
-    // 不压缩任何 tab —— 所有 tab 的位置和宽度保持不变, 鼠标不漂移。
-    // 地址栏用 absolute 定位向右溢出, 覆盖在右侧 tab 上方(z-index)。
-    this.#squeezedTabs = [];
-    return true;
+    urlbarContainer.style.cssText = "";
+    this.#activeTab = null;
   }
 
   #updateSecurityIndicator(tab, state) {
